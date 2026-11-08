@@ -1,8 +1,10 @@
 // Jarvis — interface
+const RAW_BASE = window.__API_BASE__ || '';
+const BASE = RAW_BASE.startsWith('__PORT_') ? '' : RAW_BASE.replace(/\/$/, '');
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const api = async (url, opts = {}) => {
-  const r = await fetch(url, { headers: { 'content-type': 'application/json' }, ...opts, body: opts.body ? JSON.stringify(opts.body) : undefined });
+  const r = await fetch(BASE + url, { credentials: 'same-origin', headers: { 'content-type': 'application/json' }, ...opts, body: opts.body ? JSON.stringify(opts.body) : undefined });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.erro || r.statusText);
   return j;
@@ -102,7 +104,7 @@ async function speak(text) {
   const clean = plain(text);
   if (CFG.voz.motor !== 'navegador') {
     try {
-      const r = await fetch('/api/tts', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ texto: clean }) });
+      const r = await fetch(BASE + '/api/tts', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ texto: clean }) });
       if (!r.ok) throw new Error((await r.json()).erro);
       audioEl = new Audio(URL.createObjectURL(await r.blob()));
       audioEl.onended = done; audioEl.onerror = done; await audioEl.play(); return;
@@ -231,10 +233,10 @@ async function loadTree() {
   $('#vaultPath').textContent = r.vault.split(/[\\/]/).pop(); $('#vaultPath').title = r.vault;
   $('#tree').innerHTML = renderTree(r.arvore) || '<p class="muted small" style="padding:10px">Vault vazio.</p>';
 }
-$('#tree').onclick = (e) => { const b = e.target.closest('.file'); if (b) openFile(b.dataset.path); };
+$('#tree').onclick = (e) => { const b = e.target.closest('.file'); if (b) { openFile(b.dataset.path); if (innerWidth <= 760) document.querySelector('.grid').classList.remove('side-open'); } };
 $('#chkHidden').onchange = loadTree; $('#btnRefresh').onclick = loadTree;
 
-const vurl = (p) => '/vault/' + p.split('/').map(encodeURIComponent).join('/');
+const vurl = (p) => BASE + '/vault/' + p.split('/').map(encodeURIComponent).join('/');
 async function openFile(p) {
   current = p;
   $$('.tree .file').forEach(b => b.classList.toggle('sel', b.dataset.path === p));
@@ -258,7 +260,8 @@ async function openFile(p) {
     } else pv.innerHTML = `<pre>${esc(txt)}</pre>`;
   }
 }
-$('#pvAsk').onclick = () => { $('#input').value = `Sobre o arquivo "${current}": `; $('#input').focus(); };
+$('#pvClose').onclick = () => document.querySelector('.grid').classList.remove('pv-open');
+$('#pvAsk').onclick = () => { document.querySelector('.grid').classList.remove('pv-open'); $('#input').value = `Sobre o arquivo "${current}": `; $('#input').focus(); };
 $('#pvEdit').onclick = async () => {
   const txt = await (await fetch(vurl(current))).text();
   $('#pv').innerHTML = `<textarea id="ed"></textarea><div style="display:flex;gap:8px;margin-top:8px;justify-content:flex-end"><button class="ghost" id="edCancel">Cancelar</button><button class="primary" id="edSave">Salvar</button></div>`;
@@ -287,6 +290,8 @@ async function loadTasks() {
 async function loadMem() { const m = await api('/api/memoria'); $('#memoria').innerHTML = md(m.texto || '_Nada memorizado ainda. Diga: "Jarvis, lembre que…"_'); }
 
 $$('.tab').forEach(b => b.onclick = () => {
+  const grid = document.querySelector('.grid');
+  if (b.classList.contains('active') && grid.classList.contains('side-open') && innerWidth <= 760) { grid.classList.remove('side-open'); return; }
   $$('.tab').forEach(x => x.classList.toggle('active', x === b));
   $$('.panel').forEach(p => p.classList.toggle('active', p.dataset.panel === b.dataset.tab));
   document.querySelector('.grid').classList.add('side-open');

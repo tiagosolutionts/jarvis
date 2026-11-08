@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://api.fontshare.com" />
   <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600&display=swap" rel="stylesheet" />
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="./style.css" />
   <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
 </head>
 <body>
@@ -63,6 +63,7 @@
           <button class="ghost small" id="pvAsk" disabled>Pedir ajuste</button>
           <button class="ghost small" id="pvEdit" disabled>Editar</button>
           <a class="ghost small" id="pvOpen" target="_blank" hidden>Abrir</a>
+          <button class="ghost small" id="pvClose" title="Fechar">Fechar</button>
         </div>
       </div>
       <div id="pv" class="pv"><p class="muted empty">Selecione um arquivo do Vault ou peça para o Jarvis abrir algo aqui.</p></div>
@@ -102,6 +103,7 @@
     </form>
   </dialog>
 
-  <script src="/app.js"></script>
+  <script>window.__API_BASE__ = '__PORT_3333__';</script>
+  <script src="./app.js"></script>
 </body>
 </html>
