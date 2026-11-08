@@ -394,7 +394,7 @@ const server = http.createServer(async (req, res) => {
     if (!file.startsWith(PUBLIC_DIR)) return send(res, 403, 'proibido', 'text/plain');
     return send(res, 200, await fsp.readFile(file), MIME[path.extname(file)] || 'application/octet-stream');
   } catch (e) {
-    const code = e.code === 'ENOENT' ? 404 : 500;
+    const code = e.code === 'ENOENT' ? 404 : 422;
     return send(res, code, { erro: e.message });
   }
 });
