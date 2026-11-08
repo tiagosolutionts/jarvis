@@ -12,6 +12,7 @@ const api = async (url, opts = {}) => {
 const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const md = (s) => (window.marked ? marked.parse(s || '') : `<pre>${esc(s)}</pre>`);
 
+const PREFS = {}; // preferências da sessão
 let CFG = null;
 let state = 'idle'; // idle | ouvindo | pensando | falando
 let comandos = [];
@@ -170,8 +171,8 @@ $('#btnMic').onclick = () => {
   setTimeout(() => startListening(false), 120);
 };
 document.addEventListener('keydown', (e) => { if (e.ctrlKey && e.code === 'Space') { e.preventDefault(); $('#btnMic').click(); } if (e.key === 'Escape') shutUp(); });
-$('#chkWake').onchange = (e) => { localStorage.jarvisWake = e.target.checked ? '1' : ''; if (e.target.checked) { startMeter(); startListening(true); } else stopListening(true); setState('idle'); };
-$('#chkMute').onchange = (e) => { localStorage.jarvisMute = e.target.checked ? '1' : ''; if (e.target.checked) shutUp(); };
+$('#chkWake').onchange = (e) => { PREFS.jarvisWake = e.target.checked ? '1' : ''; if (e.target.checked) { startMeter(); startListening(true); } else stopListening(true); setState('idle'); };
+$('#chkMute').onchange = (e) => { PREFS.jarvisMute = e.target.checked ? '1' : ''; if (e.target.checked) shutUp(); };
 
 // ---------- Conversa ----------
 function addMsg(kind, html, chips = []) {
@@ -212,7 +213,7 @@ async function send(text, byVoice = false) {
     addMsg('bot', md(r.texto || '…'), chips);
     if (refresh) { loadTree(); loadTasks(); }
     if (chips.some(c => c.rotulo.startsWith('memória'))) loadMem();
-    if (byVoice || $('#chkWake').checked || localStorage.jarvisSpeakAll) speak(r.texto); else setState('idle');
+    if (byVoice || $('#chkWake').checked || PREFS.jarvisSpeakAll) speak(r.texto); else setState('idle');
   } catch (e) {
     addMsg('bot err', esc(e.message)); setState('idle');
     if ($('#chkWake').checked) startListening(true);
@@ -331,11 +332,11 @@ function applyCfg() {
 async function loadAll() { await Promise.all([loadTree(), loadArsenal(), loadTasks(), loadMem()]).catch(e => addMsg('bot err', esc(e.message))); }
 (async () => {
   CFG = await api('/api/config');
-  $('#chkMute').checked = !!localStorage.jarvisMute;
+  $('#chkMute').checked = !!PREFS.jarvisMute;
   applyCfg(); await loadAll();
   const ok = CFG.provedor === 'anthropic' ? CFG.anthropicKey : CFG.openaiKey;
   addMsg('bot', ok
     ? `<p>Bom te ver, ${esc(CFG.tratamento)}. Posso ler e editar seu Vault, rodar skills, cuidar das tarefas e lembrar do que importa. Diga <b>"${esc(CFG.nome)}"</b> ou toque no microfone.</p>`
     : `<p>Olá, ${esc(CFG.tratamento)}. Para eu ganhar vida, abra <b>Configurações</b> e cole sua chave da Anthropic ou OpenAI.</p>`);
-  if (localStorage.jarvisWake && SR) { $('#chkWake').checked = true; startMeter(); startListening(true); }
+  if (PREFS.jarvisWake && SR) { $('#chkWake').checked = true; startMeter(); startListening(true); }
 })();
