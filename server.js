@@ -339,7 +339,7 @@ async function tts(text) {
 }
 
 // ---------- HTTP ----------
-const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.md': 'text/plain; charset=utf-8', '.txt': 'text/plain; charset=utf-8', '.csv': 'text/plain; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.mp4': 'video/mp4', '.mp3': 'audio/mpeg', '.pdf': 'application/pdf', '.ico': 'image/x-icon' };
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.md': 'text/plain; charset=utf-8', '.txt': 'text/plain; charset=utf-8', '.csv': 'text/plain; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.mp4': 'video/mp4', '.mp3': 'audio/mpeg', '.pdf': 'application/pdf', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json' };
 const send = (res, code, body, type = 'application/json; charset=utf-8') => { res.writeHead(code, { 'content-type': type }); res.end(typeof body === 'string' || Buffer.isBuffer(body) ? body : JSON.stringify(body)); };
 const readBody = (req) => new Promise((ok, no) => { let b = ''; req.on('data', c => (b += c)); req.on('end', () => { try { ok(b ? JSON.parse(b) : {}); } catch (e) { no(e); } }); });
 
@@ -366,6 +366,20 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/tarefas') return send(res, 200, await readTasks());
     if (url.pathname === '/api/memoria') return send(res, 200, { texto: await readMem() });
     if (url.pathname === '/api/tts' && req.method === 'POST') { const { texto } = await readBody(req); return send(res, 200, await tts(texto), 'audio/mpeg'); }
+    if (url.pathname === '/api/stt' && req.method === 'POST') {
+      const { audio, mime = 'audio/mp4' } = await readBody(req);
+      if (!config.openaiKey) throw new Error('Para usar o microfone neste navegador (ex.: iPhone), adicione uma chave da OpenAI em Configurações — ou escreva sua mensagem.');
+      const ext = /webm/.test(mime) ? 'webm' : /ogg/.test(mime) ? 'ogg' : /wav/.test(mime) ? 'wav' : 'm4a';
+      const fd = new FormData();
+      fd.append('file', new Blob([Buffer.from(audio, 'base64')], { type: mime.split(';')[0] }), 'fala.' + ext);
+      fd.append('model', 'whisper-1');
+      fd.append('language', config.idioma.slice(0, 2));
+      const base = /openai\.com/.test(config.openaiBaseUrl) ? config.openaiBaseUrl : 'https://api.openai.com/v1';
+      const r = await fetch(base.replace(/\/$/, '') + '/audio/transcriptions', { method: 'POST', headers: { authorization: 'Bearer ' + config.openaiKey }, body: fd });
+      const j = await r.json();
+      if (!r.ok) throw new Error('Transcrição: ' + (j.error?.message || r.statusText));
+      return send(res, 200, { texto: j.text || '' });
+    }
     if (url.pathname === '/api/salvar' && req.method === 'POST') {
       const { caminho, conteudo } = await readBody(req); const p = safe(caminho);
       await fsp.mkdir(path.dirname(p), { recursive: true }); await fsp.writeFile(p, conteudo); return send(res, 200, { ok: true });

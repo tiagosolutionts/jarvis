@@ -2,7 +2,15 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#07090c" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Jarvis" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="./icon-180.png" />
   <title>Jarvis</title>
   <link rel="preconnect" href="https://api.fontshare.com" />
   <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600&display=swap" rel="stylesheet" />
@@ -14,14 +22,15 @@
   <header class="top">
     <div class="brand"><span class="dot" id="statusDot"></span><strong id="brandName">JARVIS</strong><span class="mono muted" id="statusText">offline</span></div>
     <nav class="tabs" role="tablist">
-      <button class="tab active" data-tab="vault">Vault</button>
-      <button class="tab" data-tab="arsenal">Arsenal</button>
-      <button class="tab" data-tab="tarefas">Tarefas</button>
-      <button class="tab" data-tab="memoria">Memória</button>
+      <button class="tab tab-chat" data-tab="conversa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H8l-4 4z"/></svg><span>Conversa</span></button>
+      <button class="tab active" data-tab="vault"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h7l2 2h9v11H3z"/></svg><span>Vault</span></button>
+      <button class="tab" data-tab="arsenal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4v6c0 4-3.5 7-8 8-4.5-1-8-4-8-8V7z"/></svg><span>Arsenal</span></button>
+      <button class="tab" data-tab="tarefas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/></svg><span>Tarefas</span></button>
+      <button class="tab" data-tab="memoria"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg><span>Memória</span></button>
     </nav>
     <div class="top-actions">
-      <button class="ghost" id="btnReset" title="Nova conversa">Nova conversa</button>
-      <button class="ghost" id="btnConfig" title="Configurações">Configurações</button>
+      <button class="ghost" id="btnReset" title="Nova conversa" aria-label="Nova conversa"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 5v14M5 12h14"/></svg><span class="lbl">Nova conversa</span></button>
+      <button class="ghost" id="btnConfig" title="Configurações" aria-label="Configurações"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span class="lbl">Configurações</span></button>
     </div>
   </header>
 
@@ -53,7 +62,7 @@
         <input id="input" autocomplete="off" placeholder="Escreva ou use /comando…" />
         <button class="primary" type="submit">Enviar</button>
       </form>
-      <div class="hint mono small muted"><label><input type="checkbox" id="chkWake" /> escuta contínua com palavra de ativação</label> · <label><input type="checkbox" id="chkMute" /> silenciar voz</label></div>
+      <div class="hint mono small muted"><label id="wakeWrap"><input type="checkbox" id="chkWake" /> escuta contínua com palavra de ativação</label><label><input type="checkbox" id="chkMute" /> silenciar voz</label></div>
     </section>
 
     <aside class="preview">

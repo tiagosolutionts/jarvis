@@ -126,7 +126,7 @@ function shutUp() { speechSynthesis?.cancel(); if (audioEl) { audioEl.pause(); a
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let rec = null, listening = false, wakeMode = false, suppressed = false;
 function startListening(wake = false) {
-  if (!SR) { addMsg('err', 'Reconhecimento de voz não suportado neste navegador. Use Chrome ou Edge.'); return; }
+  if (!SR) return;
   if (listening) return;
   wakeMode = wake; suppressed = false;
   rec = new SR(); rec.lang = CFG.idioma; rec.interimResults = true; rec.continuous = wake;
@@ -164,8 +164,36 @@ function startListening(wake = false) {
 }
 function stopListening(silent) { suppressed = !!silent; if (rec) try { rec.stop(); } catch {} listening = false; }
 
+// Gravação + transcrição no servidor (iPhone/Safari ou navegadores sem reconhecimento de voz)
+let recMedia = null, chunks = [];
+async function toggleRecording() {
+  if (recMedia && recMedia.state === 'recording') { recMedia.stop(); return; }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const mime = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm'].find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || '';
+    recMedia = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined); chunks = [];
+    recMedia.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+    recMedia.onstop = async () => {
+      stream.getTracks().forEach(t => t.stop());
+      const blob = new Blob(chunks, { type: recMedia.mimeType || 'audio/mp4' });
+      setState('pensando', 'Transcrevendo…');
+      try {
+        const b64 = await new Promise(ok => { const fr = new FileReader(); fr.onload = () => ok(String(fr.result).split(',')[1]); fr.readAsDataURL(blob); });
+        const r = await api('/api/stt', { method: 'POST', body: { audio: b64, mime: blob.type } });
+        if (r.texto && r.texto.trim()) send(r.texto.trim(), true); else setState('idle', 'Não entendi, tente de novo');
+      } catch (e) { addMsg('bot err', esc(e.message)); setState('idle'); }
+    };
+    recMedia.start(); setState('ouvindo', 'Gravando… toque de novo para enviar');
+    micLevel = 0.3;
+  } catch (e) { addMsg('bot err', 'Não consegui acessar o microfone: ' + esc(e.message)); }
+}
+// Desbloqueia a voz no iOS no primeiro toque
+let unlocked = false;
+document.addEventListener('touchend', () => { if (unlocked || !('speechSynthesis' in window)) return; unlocked = true; try { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); } catch {} }, { once: true });
+
 $('#btnMic').onclick = () => {
   shutUp();
+  if (!SR) return toggleRecording();
   if (listening && !wakeMode) { stopListening(); return; }
   stopListening(true);
   setTimeout(() => startListening(false), 120);
@@ -198,6 +226,7 @@ async function send(text, byVoice = false) {
   // comandos /rápidos
   const cmd = comandos.find(c => text.split(/\s/)[0] === c.nome);
   const payload = cmd ? cmd.prompt + (text.slice(cmd.nome.length).trim() ? '\n\nContexto adicional: ' + text.slice(cmd.nome.length).trim() : '') : text;
+  showChat();
   addMsg('user', esc(text));
   stopListening(true);
   setState('pensando');
@@ -234,7 +263,7 @@ async function loadTree() {
   $('#vaultPath').textContent = r.vault.split(/[\\/]/).pop(); $('#vaultPath').title = r.vault;
   $('#tree').innerHTML = renderTree(r.arvore) || '<p class="muted small" style="padding:10px">Vault vazio.</p>';
 }
-$('#tree').onclick = (e) => { const b = e.target.closest('.file'); if (b) { openFile(b.dataset.path); if (innerWidth <= 760) document.querySelector('.grid').classList.remove('side-open'); } };
+$('#tree').onclick = (e) => { const b = e.target.closest('.file'); if (b) openFile(b.dataset.path); };
 $('#chkHidden').onchange = loadTree; $('#btnRefresh').onclick = loadTree;
 
 const vurl = (p) => BASE + '/vault/' + p.split('/').map(encodeURIComponent).join('/');
@@ -262,7 +291,7 @@ async function openFile(p) {
   }
 }
 $('#pvClose').onclick = () => document.querySelector('.grid').classList.remove('pv-open');
-$('#pvAsk').onclick = () => { document.querySelector('.grid').classList.remove('pv-open'); $('#input').value = `Sobre o arquivo "${current}": `; $('#input').focus(); };
+$('#pvAsk').onclick = () => { document.querySelector('.grid').classList.remove('pv-open'); showChat(); $('#input').value = `Sobre o arquivo "${current}": `; $('#input').focus(); };
 $('#pvEdit').onclick = async () => {
   const txt = await (await fetch(vurl(current))).text();
   $('#pv').innerHTML = `<textarea id="ed"></textarea><div style="display:flex;gap:8px;margin-top:8px;justify-content:flex-end"><button class="ghost" id="edCancel">Cancelar</button><button class="primary" id="edSave">Salvar</button></div>`;
@@ -282,7 +311,7 @@ async function loadArsenal() {
     sec('Servidores MCP', a.mcp, m => `<div class="item"><b>${esc(m.nome)}</b><span class="mono">${esc(m.comando)}</span></div>`) +
     sec('Ferramentas do Jarvis', a.ferramentas, f => `<div class="item"><b class="mono">${esc(f.nome)}</b><span>${esc(f.descricao)}</span></div>`);
 }
-$('#arsenal').onclick = (e) => { const it = e.target.closest('.item'); if (!it) return; if (it.dataset.open) openFile(it.dataset.open); if (it.dataset.cmd) { $('#input').value = it.dataset.cmd + ' '; $('#input').focus(); } };
+$('#arsenal').onclick = (e) => { const it = e.target.closest('.item'); if (!it) return; if (it.dataset.open) openFile(it.dataset.open); if (it.dataset.cmd) { showChat(); $('#input').value = it.dataset.cmd + ' '; $('#input').focus(); } };
 async function loadTasks() {
   const t = await api('/api/tarefas');
   const pend = t.filter(x => !x.feita), done = t.filter(x => x.feita);
@@ -290,13 +319,16 @@ async function loadTasks() {
 }
 async function loadMem() { const m = await api('/api/memoria'); $('#memoria').innerHTML = md(m.texto || '_Nada memorizado ainda. Diga: "Jarvis, lembre que…"_'); }
 
-$$('.tab').forEach(b => b.onclick = () => {
+const isMobile = () => innerWidth <= 760;
+function showTab(t) {
   const grid = document.querySelector('.grid');
-  if (b.classList.contains('active') && grid.classList.contains('side-open') && innerWidth <= 760) { grid.classList.remove('side-open'); return; }
-  $$('.tab').forEach(x => x.classList.toggle('active', x === b));
-  $$('.panel').forEach(p => p.classList.toggle('active', p.dataset.panel === b.dataset.tab));
-  document.querySelector('.grid').classList.add('side-open');
-});
+  $$('.tab').forEach(x => x.classList.toggle('active', x.dataset.tab === t));
+  if (t === 'conversa') { grid.classList.remove('side-open'); $('#log').scrollTop = 1e9; return; }
+  $$('.panel').forEach(p => p.classList.toggle('active', p.dataset.panel === t));
+  grid.classList.add('side-open');
+}
+const showChat = () => { if (isMobile()) showTab('conversa'); };
+$$('.tab').forEach(b => b.onclick = () => showTab(b.dataset.tab));
 
 // ---------- Configurações ----------
 const get = (o, k) => k.split('.').reduce((a, x) => a?.[x], o);
@@ -333,6 +365,8 @@ async function loadAll() { await Promise.all([loadTree(), loadArsenal(), loadTas
 (async () => {
   CFG = await api('/api/config');
   $('#chkMute').checked = !!PREFS.jarvisMute;
+  if (!SR) $('#wakeWrap').hidden = true;
+  if (isMobile()) showTab('conversa');
   applyCfg(); await loadAll();
   const ok = CFG.provedor === 'anthropic' ? CFG.anthropicKey : CFG.openaiKey;
   addMsg('bot', ok
