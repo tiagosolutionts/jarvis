@@ -1,0 +1,1 @@
+Crie um carrossel de Instagram de 7 slides sobre o tema informado. Gere um arquivo HTML autocontido em Conteudo/Carrosseis/ com os slides em 1080x1350 (proporção 4:5), um embaixo do outro, visual escuro e moderno, tipografia grande. Abra o arquivo no painel e me diga o título do slide 1.

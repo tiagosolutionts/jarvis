@@ -1,0 +1,1 @@
+Leia minhas tarefas pendentes e a nota mais recente da pasta Notas. Defina a missão do dia: as 3 prioridades mais importantes, em ordem, com um motivo curto para cada. Salve em Notas/ como "AAAA-MM-DD Missão do dia.md" e me diga as 3 prioridades em voz.

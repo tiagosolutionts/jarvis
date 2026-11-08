@@ -1,0 +1,6 @@
+{
+  "mcpServers": {
+    "filesystem": { "command": "npx", "args": ["-y", "@modelcontextprotocol/server-filesystem", "."] },
+    "n8n": { "url": "https://seu-n8n.exemplo.com/mcp" }
+  }
+}
